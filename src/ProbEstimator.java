@@ -22,13 +22,21 @@ public class ProbEstimator {
 		String inputFileName = args[0];//"/home/zlab-1/lian/course/project_1_release/data/train_reviews.txt"; //args[0];
 		//String outputFileName = args[1];//"/home/zlab-1/lian/course/project_1_release/data/train_reviews.txt"; //args[1];
 
+		
+
+
 		BufferedReader br = new BufferedReader(new FileReader(inputFileName));
 
 		String line = br.readLine();
 
 		//store single word set
 		Set<String> setv = new HashSet<>();
+		//Store all single word count
+		Map<String, Integer> vmap = new HashMap<>();
+
 		setv.add(line);
+		vmap.put(line, 1);
+
 		//store pair word appearance
 		Map<String, Integer> map = new HashMap<>();
 
@@ -43,6 +51,11 @@ public class ProbEstimator {
 			if (!setv.contains(line)){
 				setv.add(line);
 			}
+			if (!vmap.containsKey(line))
+				vmap.put(line, 1);
+			else
+				vmap.put(line, vmap.get(line)+1);
+
 			String pair = previous + " " + line;
 			if (!map.containsKey(pair)){
 				map.put(pair, 1);
@@ -55,11 +68,31 @@ public class ProbEstimator {
 
 		br.close();
 
-		//Write all the pairs into bigram.txt
+
+
+		//save all the tokens to be checked
+        String[][] confuse = {{"accept", "except"},{"adverse", "averse"},{"advice","advise"},{"affect","effect"},{"aisle","isle"},{"aloud", "allowed"},{"altar","alter"},{"amoral","immoral"},{"appraise","apprise"},{"assent","ascent"}};
+        Set<String> confuseSet = new HashSet<>();
+        for (String[] ss : confuse){
+            confuseSet.add(ss[0]);
+            confuseSet.add(ss[1]);
+        }
+
+		//Write all the pairs into bigram.txt, and save the data containing confusing pairs
+		//confuse map : save <pairs, probability>
+		Map<String, Double> confusemap = new HashMap<>();
 		FileWriter fw = new FileWriter("data/bigram.txt");
 		BufferedWriter bw = new BufferedWriter(fw);
 		for (String s : map.keySet()){
 			bw.write(s + " " + map.get(s) + "\n");
+			String pairs = s.split(" ");
+			if (confuseSet.contains(pairs[0]){
+				int cv = vmap.get(pairs[1]);
+				double ppairs = map.get(s) / (double)cv;
+				confusemap.put(s, pparis);
+				System.out.println(s + " " + ppairs);
+
+			}
 		}
 		bw.close();
 		fw.close();
@@ -126,6 +159,13 @@ public class ProbEstimator {
 		double pl = 1/(double) (nBig + map.size());
 		double pgt = nc[0] / (double)nBig;
 		System.out.println("for zero frequency token\nLaplacian is " + pl + "\nGT is " + pgt);
+
+
+		//Next decide which token to use in confusing pair
+
+		
+
+
 
 	}
 }
