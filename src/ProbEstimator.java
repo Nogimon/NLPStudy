@@ -22,18 +22,13 @@ public class ProbEstimator {
 		String inputFileName = args[0];//"/home/zlab-1/lian/course/project_1_release/data/train_reviews.txt"; //args[0];
 		//String outputFileName = args[1];//"/home/zlab-1/lian/course/project_1_release/data/train_reviews.txt"; //args[1];
 
-		//FileWriter fw = new FileWriter(outputFileName);
-		//BufferedWriter bw = new BufferedWriter(fw);
-
-		//DocumentPreprocessor dp = new DocumentPreprocessor(inputFileName);
-
-		//Scanner in = new Scanner(new BufferedReader(new FileReader(inputFileName)));
-
 		BufferedReader br = new BufferedReader(new FileReader(inputFileName));
 
 		String line = br.readLine();
 
+		//store single word set
 		Set<String> setv = new HashSet<>();
+		//store pair word appearance
 		Map<String, Integer> map = new HashMap<>();
 
 		String previous = line;
@@ -44,7 +39,7 @@ public class ProbEstimator {
 			if (!setv.contains(line)){
 				setv.add(line);
 			}
-			String pair = previous + "#" + line;
+			String pair = previous + " " + line;
 			if (!map.containsKey(pair)){
 				map.put(pair, 1);
 			}
@@ -54,6 +49,16 @@ public class ProbEstimator {
 		}
 
 		br.close();
+
+		//Write all the pairs into bigram.txt
+		FileWriter fw = new FileWriter("data/bigram.txt");
+		BufferedWriter bw = new BufferedWriter(fw);
+		for (String s : map){
+			bw.write(s + " " + map.get(s));
+		}
+		bw.close();
+		fw.close();
+
 
 		int v = setv.size();
 		System.out.println(v);
@@ -81,6 +86,13 @@ public class ProbEstimator {
 			System.out.println(Math.log(count)+" " + Math.log(nMap.get(count)));
 		}
 		System.out.println("the total N is " + nBig);
+
+		//Write all log(C) and log(Nc) into ff.txt
+		fw = new FileWriter("data/ff.txt");
+		bw = new BufferedWriter(fw);
+		for (int count : nMap.keySet()){
+			bw.write(Math.log(count) + " " + Math.log(nMap.get(count)));
+		}
 
 	}
 }
