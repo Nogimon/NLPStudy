@@ -56,6 +56,7 @@ public class ProbEstimator {
 			else
 				vmap.put(line, vmap.get(line)+1);
 
+			//I saved previous ahead of line. that is (w,v) -> saved as "v w"
 			String pair = previous + " " + line;
 			if (!map.containsKey(pair)){
 				map.put(pair, 1);
@@ -72,7 +73,7 @@ public class ProbEstimator {
 
 		//save all the tokens to be checked
         String[][] confuse = {{"accept", "except"},{"adverse", "averse"},{"advice","advise"},{"affect","effect"},{"aisle","isle"},{"aloud", "allowed"},{"altar","alter"},{"amoral","immoral"},{"appraise","apprise"},{"assent","ascent"}};
-        Set<String> confuseSet = new HashSet<>();
+        List<String> confuseSet = new ArrayList<>();
         for (String[] ss : confuse){
             confuseSet.add(ss[0]);
             confuseSet.add(ss[1]);
@@ -81,21 +82,26 @@ public class ProbEstimator {
 		//Write all the pairs into bigram.txt, and save the data containing confusing pairs
 		//confuse map : save <pairs, probability>
 		Map<String, Double> confusemap = new HashMap<>();
-		FileWriter fw = new FileWriter("data/bigram.txt");
+		FileWriter fw = new FileWriter("results/bigram.txt");
 		BufferedWriter bw = new BufferedWriter(fw);
+		FileWriter fw2 = new FileWriter("results/pairprob.txt");
+		BufferedWriter bw2 = new BufferedWriter(fw2);
 		for (String s : map.keySet()){
 			bw.write(s + " " + map.get(s) + "\n");
-			String pairs = s.split(" ");
-			if (confuseSet.contains(pairs[0]){
-				int cv = vmap.get(pairs[1]);
+			String[] pairs = s.split(" ");
+			//Note that the confuse word should appear later
+			if (confuseSet.contains(pairs[1])){
+				int cv = vmap.get(pairs[0]);
 				double ppairs = map.get(s) / (double)cv;
-				confusemap.put(s, pparis);
-				System.out.println(s + " " + ppairs);
+				confusemap.put(s, ppairs);
+				bw2.write(s + " " + ppairs + "\n");
 
 			}
 		}
 		bw.close();
 		fw.close();
+		bw2.close();
+		fw2.close();
 
 
 		int v = setv.size();
@@ -131,7 +137,7 @@ public class ProbEstimator {
 		int[] nc = new int[10];
 
 		//Write all log(C) and log(Nc) into ff.txt
-		fw = new FileWriter("data/ff.txt");
+		fw = new FileWriter("results/ff.txt");
 		bw = new BufferedWriter(fw);
 		for (int count : nMap.keySet()){
 			bw.write(Math.log(count) + " " + Math.log(nMap.get(count)) + "\n");
@@ -143,7 +149,7 @@ public class ProbEstimator {
 
 
 		//calculate GT smoothing for 1 to 5 and save in GTTable.txt
-		fw = new FileWriter("data/GTTable.txt");
+		fw = new FileWriter("results/GTTable.txt");
 		bw = new BufferedWriter(fw);
 		int nclimit = 5;
 		bw.write("smooth upper limie is " + nclimit + "\n");
@@ -162,6 +168,29 @@ public class ProbEstimator {
 
 
 		//Next decide which token to use in confusing pair
+		Map<String, String> judgeMap = new HashMap<>();
+		for (int i = 0; i < confuseSet.size(); i+=2){
+			String s1 = confuseSet.get(i);
+			String s2 = confuseSet.get(i+1);
+			if (!vmap.containsKey(s1) && !vmap.containsKey(s2))
+				continue;
+			else if (vmap.containsKey(s1) && !vmap.containsKey(s2))
+				judgeMap.put(s2, s1);
+			else if (!vmap.containsKey(s1) && vmap.containsKey(s2))
+				judgeMap.put(s1,s2);
+			else{
+
+				if (vmap.get(s1) > vmap.get(s2))
+					judgeMap.put(s2, s1);
+				else
+					judgeMap.put(s1, s2);
+			}
+			
+		}
+		for (String s : judgeMap.keySet()){
+			System.out.println(s + " -> " + judgeMap.get(s));
+		}
+
 
 		
 

@@ -20,19 +20,31 @@ public class Predictor {
 
         //save all the tokens to be checked
         String[][] confuse = {{"accept", "except"},{"adverse", "averse"},{"advice","advise"},{"affect","effect"},{"aisle","isle"},{"aloud", "allowed"},{"altar","alter"},{"amoral","immoral"},{"appraise","apprise"},{"assent","ascent"}};
-        Set<String> confuseSet = new HashSet<>();
+        List<String> confuseSet = new ArrayList<>();
         for (String[] ss : confuse){
             confuseSet.add(ss[0]);
             confuseSet.add(ss[1]);
         }
 
+        //read all the tokesn pair probablilities
+
+        BufferedReader br = new BufferedReader(new FileReader("results/pairprob.txt"));
+        Map<String, Double> confusemap = new HashMap<>();
+
+        String line = " ";
+        while(line != null){
+            line = br.readLine();
+            line = line.split(" ");
+            confusemap.put(line[0] + " " + line[1], Double.parseDouble(line[2]);
+
+        }
+        br.close();
 
 
 
+        br = new BufferedReader(new FileReader(inputFileName));
 
-        BufferedReader br = new BufferedReader(new FileReader(inputFileName));
-
-        String line = br.readLine();
+        line = br.readLine();
         String previous;
 
         //store single word set
@@ -42,6 +54,8 @@ public class Predictor {
 
         while(line!=null){
             line = br.readLine();
+
+            
             if (!setv.contains(line)){
                 setv.add(line);
             }
