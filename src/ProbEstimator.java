@@ -74,6 +74,7 @@ public class ProbEstimator {
 
 		//Write all the pairs into bigram.txt, and save the data containing confusing pairs
 		//confusemap : save <pairs, probability>
+		new File("results").mkdirs();
 		Map<String, Double> confusemap = new HashMap<>();
 		FileWriter fw = new FileWriter("results/bigram.txt");
 		BufferedWriter bw = new BufferedWriter(fw);
