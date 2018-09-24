@@ -8,10 +8,6 @@ import java.util.*;
 import java.util.List;
 
 
-/**
-  * This class takes a text file as input and tokenize sentences and tokens.
-  * The output is a stream of tokens, with <s> and </s> indicating sentence boundaries.
-  */
 public class ProbEstimator {
 
 	/**
@@ -22,9 +18,8 @@ public class ProbEstimator {
 		String inputFileName = args[0];//"/home/zlab-1/lian/course/project_1_release/data/train_reviews.txt"; //args[0];
 		//String outputFileName = args[1];//"/home/zlab-1/lian/course/project_1_release/data/train_reviews.txt"; //args[1];
 
-		
 
-
+		//Part1 : process train tokens
 		BufferedReader br = new BufferedReader(new FileReader(inputFileName));
 
 		String line = br.readLine();
@@ -41,11 +36,9 @@ public class ProbEstimator {
 		Map<String, Integer> map = new HashMap<>();
 
 		String previous = line;
-		setv.add(previous);
-
 		while(line!=null){
 			line = br.readLine();
-			//if (line.length() == 0) continue;
+			if (line == null) break;
 
 			//line = line.replaceAll("[\\W+]", "");
 			if (!setv.contains(line)){
@@ -70,7 +63,7 @@ public class ProbEstimator {
 		br.close();
 
 
-
+		//Part2 : Process spelling checks
 		//save all the tokens to be checked
         String[][] confuse = {{"accept", "except"},{"adverse", "averse"},{"advice","advise"},{"affect","effect"},{"aisle","isle"},{"aloud", "allowed"},{"altar","alter"},{"amoral","immoral"},{"appraise","apprise"},{"assent","ascent"}};
         List<String> confuseSet = new ArrayList<>();
@@ -80,7 +73,7 @@ public class ProbEstimator {
         }
 
 		//Write all the pairs into bigram.txt, and save the data containing confusing pairs
-		//confuse map : save <pairs, probability>
+		//confusemap : save <pairs, probability>
 		Map<String, Double> confusemap = new HashMap<>();
 		FileWriter fw = new FileWriter("results/bigram.txt");
 		BufferedWriter bw = new BufferedWriter(fw);
@@ -103,7 +96,7 @@ public class ProbEstimator {
 		bw2.close();
 		fw2.close();
 
-
+		//Part3: Process all the parameters required in homework 3.1 etc
 		int v = setv.size();
 		System.out.println("V of one word is " + v);
 		System.out.println("V of two words is " + map.size());
@@ -187,9 +180,17 @@ public class ProbEstimator {
 			}
 			
 		}
+
+		//Save the pair dicision into  dicision.txt
+		fw = new FileWriter("results/decision.txt");
+		bw = new BufferedWriter(fw);
 		for (String s : judgeMap.keySet()){
-			System.out.println(s + " -> " + judgeMap.get(s));
+			//System.out.println(s + " -> " + judgeMap.get(s));
+			bw.write(s + " " + judgeMap.get(s)+ "\n");
 		}
+		bw.close();
+		fw.close();
+
 
 
 		
