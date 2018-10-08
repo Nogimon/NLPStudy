@@ -91,6 +91,14 @@ class HMM {
 	 * Set up the basic statistics of the corpora.
 	 */
 	public HMM(ArrayList<Sentence> _labeled_corpus, ArrayList<Sentence> _unlabeled_corpus) {
+		this.labeled_corpus = _labeled_corpus;
+		this.unlabeled_corpus = _unlabeled_corpus;
+		pos_tags = new Hashtable<>();
+		inv_pos_tags = new Hashtable<>();
+		vocabulary = new Hashtable<>();
+
+
+
 	}
 
 	/**
@@ -109,6 +117,12 @@ class HMM {
 	 * Create HMM variables.
 	 */
 	public void prepareMatrices() {
+		for (Sentence tempSentence : labeled_corpus){
+			for (int i = 0; i < tempSentence.length(); i++){
+				
+			}
+		}
+
 	}
 
 	/** 
