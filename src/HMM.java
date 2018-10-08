@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.*;
+
 
 import Jama.Matrix;
 
@@ -29,6 +31,10 @@ class HMM {
 	int num_words;
 
 	Hashtable<String, Integer> vocabulary;
+
+	Map<String, Integer> tagPairMap; // store the tag1+tag2 pair occurance
+	Map<String, Integer> tagCount; // count tag occurance
+	Map<String, Integer> tagWordPairMap; // store the tag + word pair occurance
 
 	private int max_sentence_length;
 	
@@ -97,6 +103,10 @@ class HMM {
 		inv_pos_tags = new Hashtable<>();
 		vocabulary = new Hashtable<>();
 
+		tagPairMap = new HashMap<>();
+		tagWordPairMap = new HashMap<>();
+		tagCount = new HashMap<>();
+
 
 
 	}
@@ -117,11 +127,74 @@ class HMM {
 	 * Create HMM variables.
 	 */
 	public void prepareMatrices() {
+		int tagIdx = 1;
+		int tempTagIdx = 1;
 		for (Sentence tempSentence : labeled_corpus){
 			for (int i = 0; i < tempSentence.length(); i++){
-				
+				//System.out.println(tempSentence.getWordAt(i).getLemme());
+				Word tempWordClass = tempSentence.getWordAt(i);
+				String tempWord = tempWordClass.getLemme();
+				String tempTag = tempWordClass.getPosTag();
+				//process new tag
+				if (!pos_tags.containsKey(tempTag)){
+					pos_tags.put(tempTag, tagIdx);
+					inv_pos_tags.put(tagIdx, tempTag);
+					tagIdx++;
+				}
+				//process tag
+				if (!tagCount.containsKey(tempTag))
+					tagCount.put(tempTag, 1);
+				else
+					tagCount.put(tempTag, tagCount.get(tempTag)+1);
+
+				//process word
+				if (!vocabulary.contains(tempWord)){
+					vocabulary.put(tempWord, 1);
+				}
+				else{
+					vocabulary.put(tempWord, vocabulary.get(tempWord) + 1);
+				}
+
+				//save pair tag
+				if (i > 0){
+					String previousWord = tempSentence.getWordAt(i-1).getLemme();
+					String previousTag = tempSentence.getWordAt(i-1).getPosTag();
+					String tagPair = previousTag + " " + tempTag;
+					if (!tagPairMap.containsKey(tagPair))
+						tagPairMap.put(tagPair, 1);
+					else
+						tagPairMap.put(tagPair, tagPairMap.get(tagPair)+1);
+
+					//wordpair temporarily not usefull
+				}
+
+				//save word pair tag
+				String tagWordPair = tempWord + " " + tempTag;
+				if (!tagWordPairMap.containsKey(tagWordPair))
+					tagWordPairMap.put(tagWordPair, 1);
+				else
+					tagWordPairMap.put(tagWordPair, tagWordPairMap.get(tagWordPair)+1);
+
+
+				//System.out.println(tempWord + " " + tempTag + " " + tagIdx);
+
 			}
 		}
+
+		num_words = vocabulary.size();
+		num_postags = pos_tags.size();
+
+
+		//check result
+		System.out.println("total words are " + num_words);
+		System.out.println("total tags are " + num_postags);
+		for (String s : tagCount.keySet()){
+			System.out.println(s + " " + tagCount.get(s));
+		}
+		for (String s : tagPairMap.keySet()){
+			System.out.println(s + " " + tagPairMap.get(s));
+		}
+
 
 	}
 
@@ -162,6 +235,7 @@ class HMM {
 	 * \xi_t(i,j) and \xi_t(i) are computed for a sentence
 	 */
 	private double expectation(Sentence s) {
+		return 0;
 	}
 
 	/**
@@ -179,6 +253,7 @@ class HMM {
 	 * return: log P(O|\lambda)
 	 */
 	private double forward(Sentence s) {
+		return 0;
 	}
 
 	/**
@@ -187,6 +262,7 @@ class HMM {
 	 * return: log P(O|\lambda)
 	 */
 	private double backward(Sentence s) {
+		return 0;
 	}
 
 	/**
@@ -194,6 +270,7 @@ class HMM {
 	 * v are in log scale, A, B and pi are in the usual scale.
 	 */
 	private double viterbi(Sentence s) {
+		return 0;
 	}
 
 	public static void main(String[] args) throws IOException {

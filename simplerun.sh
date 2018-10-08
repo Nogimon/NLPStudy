@@ -1,0 +1,1 @@
+java -cp jars/jama.jar:bin/ HMM data/p1/train.txt data/p1/test.txt results/p2/prediction results/p2/training_log 0.1
