@@ -32,6 +32,11 @@ class HMM {
 
 	Hashtable<String, Integer> vocabulary;
 
+	//similiar to tags, use 2 hashmap to store int - word mapping relationship. In order to retrieve the oi - word relation
+	Map<String, Integer> word_tags;
+	Map<Integer, String> inv_word_tags;
+
+
 	Map<String, Integer> tagPairMap; // store the tag1+tag2 pair occurance
 	Map<String, Integer> tagCount; // count tag occurance
 	Map<String, Integer> tagWordPairMap; // store the tag + word pair occurance
@@ -127,8 +132,9 @@ class HMM {
 	 * Create HMM variables.
 	 */
 	public void prepareMatrices() {
-		int tagIdx = 1;
-		int tempTagIdx = 1;
+		int tagIdx = 0;
+		int wordIdx = 0;
+		int tempTagIdx = 0;
 		for (Sentence tempSentence : labeled_corpus){
 			for (int i = 0; i < tempSentence.length(); i++){
 				//System.out.println(tempSentence.getWordAt(i).getLemme());
@@ -141,13 +147,20 @@ class HMM {
 					inv_pos_tags.put(tagIdx, tempTag);
 					tagIdx++;
 				}
-				//process tag
+				//count tag
 				if (!tagCount.containsKey(tempTag))
 					tagCount.put(tempTag, 1);
 				else
 					tagCount.put(tempTag, tagCount.get(tempTag)+1);
 
-				//process word
+				//process new word
+				if (!word_tags.containsKey(tempWord)){
+					word_tags.put(tempWord, wordIdx);
+					inv_word_tags.put(wordIdx, tempWord);
+					wordIdx++;
+				}
+
+				//count word
 				if (!vocabulary.contains(tempWord)){
 					vocabulary.put(tempWord, 1);
 				}
@@ -195,6 +208,9 @@ class HMM {
 			System.out.println(s + " " + tagPairMap.get(s));
 		}
 
+		//calculate mle
+		mle();
+
 
 	}
 
@@ -203,6 +219,43 @@ class HMM {
 	 *  used as initialization of the parameters.
 	 */
 	public void mle() {
+		//cal A
+		double[][] arrayA = new double[num_postags][num_postags];
+		for (int i = 0; i < arrayA.length; i++){
+			for (int j = 0; j < arrayA[0].length; j++){
+				//aij = pair(qi&qj) / qi
+				String qiqj = inv_pos_tags.get(i) + " " + inv_pos_tags.get(j);
+				int countqiqj = tagPairMap.getOrDefault(qiqj, 0);
+				int countqi = tagCount.get(inv_pos_tags.get(i));
+				arrayA[i][j] = countqiqj / (double) countqi;
+			}
+		}
+
+		A = new Matrix(arrayA);
+
+		//cal B
+		double[][] arrayB = new double[num_postags][num_words];
+		for (int i = 0; i < arrayB.length; i++){
+			for (int j = 0; j < arrayB[0].length; j++){
+				String qioj = inv_pos_tags.get(i) + " " + inv_word_tags.get(j);
+				int countqioj = tagWordPairMap.getOrDefault(qioj, 0);
+				int countqi = tagCount.get(inv_pos_tags.get(i));
+				arrayB[i][j] = countqioj / (double) countqi;
+			}
+		}
+		B = new Matrix(arrayB);
+
+
+		//cal pi. # of sentences is size of labeled_corpus
+		int num_sentences = labeled_corpus.size();
+		double[] arrayPi = new double[num_postags];
+		for (int i = 0 ; i < arrayPi.length; i++){
+			arrayPi[i] = tagCount.get(inv_pos_tags.get(i)) / (double) num_sentences;
+		}
+
+		pi = new Matrix(arrayPi);
+
+
 	}
 
 	/**
