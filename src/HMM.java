@@ -132,10 +132,16 @@ class HMM {
 	 * Create HMM variables.
 	 */
 	public void prepareMatrices() {
-		int tagIdx = 0;
+		int tagIdx = 1;
 		int wordIdx = 0;
 		int tempTagIdx = 0;
+		pos_tags.put("START", 0);
+		inv_pos_tags.put(0, "START");
+		tagCount.put("START", 0);
 		for (Sentence tempSentence : labeled_corpus){
+			//process start
+			String previousTag = "START";
+			tagCount.put("START", tagCount.get("START") + 1);
 			for (int i = 0; i < tempSentence.length(); i++){
 				//System.out.println(tempSentence.getWordAt(i).getLemme());
 				Word tempWordClass = tempSentence.getWordAt(i);
@@ -171,15 +177,16 @@ class HMM {
 				//save pair tag
 				if (i > 0){
 					String previousWord = tempSentence.getWordAt(i-1).getLemme();
-					String previousTag = tempSentence.getWordAt(i-1).getPosTag();
-					String tagPair = previousTag + " " + tempTag;
-					if (!tagPairMap.containsKey(tagPair))
-						tagPairMap.put(tagPair, 1);
-					else
-						tagPairMap.put(tagPair, tagPairMap.get(tagPair)+1);
+					previousTag = tempSentence.getWordAt(i-1).getPosTag();
+				}
+				String tagPair = previousTag + " " + tempTag;
+				if (!tagPairMap.containsKey(tagPair))
+					tagPairMap.put(tagPair, 1);
+				else
+					tagPairMap.put(tagPair, tagPairMap.get(tagPair)+1);
 
 					//wordpair temporarily not usefull
-				}
+				
 
 				//save word pair tag
 				String tagWordPair = tempWord + " " + tempTag;
@@ -298,6 +305,15 @@ class HMM {
 	private void maximization() {
 	}
 
+
+	//implement forward algorithm for project Phase1
+	private void forwardAlgorithm(){
+		for (Sentence s : unlabeled_corpus){
+			double prob = forward(s);
+				
+		}
+	}
+
 	/**
 	 * Forward algorithm for one sentence
 	 * s: the sentence
@@ -306,6 +322,24 @@ class HMM {
 	 * return: log P(O|\lambda)
 	 */
 	private double forward(Sentence s) {
+		double[] arrayAlpha = new double[num_postags];
+		for (int i = 0; i < arrayAlpha.length; i++){
+			//alpha = start to first * bjo
+			int o = word_tags.get(s.getWordAt(0).getLemme());
+			arrayAlpha[i] = A.get(0, i) * B.get(i, o);
+		}
+		Matrix alpha = new Matrix(arrayAlpha);
+		for (int i = 1; i < s.length(); i++){
+			int o = word_tags.get(s.getWordAt(i).getLemme());
+			for (int j = 0; j < arrayAlpha.length; j++){
+			 arrayAlpha[j] = alpha.arrayTimes(A.getMatrix(0, num_postags, j, j+1)) * B.get(j, o);
+			}
+			alpha = new Matrix(arrayAlpha);
+
+
+		}
+		
+
 		return 0;
 	}
 
