@@ -108,6 +108,8 @@ class HMM {
 		inv_pos_tags = new Hashtable<>();
 		vocabulary = new Hashtable<>();
 
+		word_tags = new HashMap<>();
+		inv_word_tags = new HashMap<>();
 		tagPairMap = new HashMap<>();
 		tagWordPairMap = new HashMap<>();
 		tagCount = new HashMap<>();
@@ -132,16 +134,15 @@ class HMM {
 	 * Create HMM variables.
 	 */
 	public void prepareMatrices() {
-		int tagIdx = 1;
+		int tagIdx = 0;
 		int wordIdx = 0;
-		int tempTagIdx = 0;
-		pos_tags.put("START", 0);
-		inv_pos_tags.put(0, "START");
-		tagCount.put("START", 0);
+		//pos_tags.put("START", 0);
+		//inv_pos_tags.put(0, "START");
+		//tagCount.put("START", 0);
 		for (Sentence tempSentence : labeled_corpus){
 			//process start
-			String previousTag = "START";
-			tagCount.put("START", tagCount.get("START") + 1);
+			String previousTag= "START";
+			//tagCount.put("START", tagCount.get("START") + 1);
 			for (int i = 0; i < tempSentence.length(); i++){
 				//System.out.println(tempSentence.getWordAt(i).getLemme());
 				Word tempWordClass = tempSentence.getWordAt(i);
@@ -241,14 +242,15 @@ class HMM {
 		A = new Matrix(arrayA);
 
 		//cal B
-		double[][] arrayB = new double[num_postags][num_words];
+		double[][] arrayB = new double[num_postags][num_words+1];
 		for (int i = 0; i < arrayB.length; i++){
-			for (int j = 0; j < arrayB[0].length; j++){
-				String qioj = inv_pos_tags.get(i) + " " + inv_word_tags.get(j);
+			for (int j = 0; j < arrayB[0].length-1; j++){
+				String qioj =  inv_word_tags.get(j) + " " + inv_pos_tags.get(i);
 				int countqioj = tagWordPairMap.getOrDefault(qioj, 0);
 				int countqi = tagCount.get(inv_pos_tags.get(i));
 				arrayB[i][j] = countqioj / (double) countqi;
 			}
+			arrayB[i][arrayB[0].length-1] = 0.1;
 		}
 		B = new Matrix(arrayB);
 
@@ -260,8 +262,8 @@ class HMM {
 			arrayPi[i] = tagCount.get(inv_pos_tags.get(i)) / (double) num_sentences;
 		}
 
-		pi = new Matrix(arrayPi);
-
+		pi = new Matrix(arrayPi, 1);
+		//pi size : (1, 44)
 
 	}
 
@@ -307,11 +309,17 @@ class HMM {
 
 
 	//implement forward algorithm for project Phase1
-	private void forwardAlgorithm(){
+	private void forwardAlgorithm(String outputDirect) throws IOException{
+		FileWriter fw = new FileWriter(outputDirect);
+		BufferedWriter bw = new BufferedWriter(fw);
 		for (Sentence s : unlabeled_corpus){
 			double prob = forward(s);
+			bw.write(String.valueOf(prob));
+			bw.write("\n");
 				
 		}
+		bw.close();
+		fw.close();
 	}
 
 	/**
@@ -323,24 +331,43 @@ class HMM {
 	 */
 	private double forward(Sentence s) {
 		double[] arrayAlpha = new double[num_postags];
-		for (int i = 0; i < arrayAlpha.length; i++){
-			//alpha = start to first * bjo
-			int o = word_tags.get(s.getWordAt(0).getLemme());
-			arrayAlpha[i] = A.get(0, i) * B.get(i, o);
-		}
-		Matrix alpha = new Matrix(arrayAlpha);
-		for (int i = 1; i < s.length(); i++){
-			int o = word_tags.get(s.getWordAt(i).getLemme());
-			for (int j = 0; j < arrayAlpha.length; j++){
-			 arrayAlpha[j] = alpha.arrayTimes(A.getMatrix(0, num_postags, j, j+1)) * B.get(j, o);
+		Matrix alpha = new Matrix(arrayAlpha, 1);
+		double P = 0;
+		for (int i = 0; i < s.length(); i++){
+			double sum = 0;
+			int o;
+			if (!word_tags.containsKey(s.getWordAt(i).getLemme())){
+				o = num_words;
 			}
-			alpha = new Matrix(arrayAlpha);
+			else {
+				o = word_tags.get(s.getWordAt(i).getLemme());
+			}
+			if (i == 0){//first word : pi(j) * bjo
+				for (int j = 0; j < arrayAlpha.length; j++){
+					arrayAlpha[j] = pi.get(0, j) * B.get(j, o);
+					sum += arrayAlpha[j];
+				}
+			}
+			else{//other word: alpha * a * b
+				for (int j = 0; j < arrayAlpha.length; j++){
+					Matrix temp2 = A.getMatrix(j, j, 0, num_postags-1);
+					Matrix temp3 = A.getMatrix(0, num_postags-1, j, j);
+					Matrix temp = alpha.times(temp3);
+					arrayAlpha[j] = temp.get(0,0)  * B.get(j, o);
+					//System.out.print(arrayAlpha[j] + " ");
+					sum += arrayAlpha[j];
+				}
+			}
 
+			//System.out.println("sum is " + sum + " log 1/sum is " + Math.log(1/sum));
+			alpha = new Matrix(arrayAlpha, 1);
+			alpha = alpha.times(1/sum);
 
+			//logP = - sum(log c)
+			P -= Math.log(1/sum);
 		}
-		
 
-		return 0;
+		return P;
 	}
 
 	/**
@@ -352,26 +379,166 @@ class HMM {
 		return 0;
 	}
 
+
+
+	//viterbi algorithm for phase 1
+	private void viterbiAlgorithm(String outputDirect) throws IOException{
+		FileWriter fw = new FileWriter(outputDirect);
+		BufferedWriter bw = new BufferedWriter(fw);
+		for (Sentence s : unlabeled_corpus){
+			int[] sequence = viterbi(s);
+			for (int i = 0; i < sequence.length; i++){
+				bw.write(s.getWordAt(i).getLemme());
+				bw.write(" ");
+				bw.write(inv_pos_tags.get(sequence[i]));
+				bw.write("\n");
+			}
+			bw.write("\n");
+
+		}
+		bw.close();
+		fw.close();
+	}
 	/**
 	 * Viterbi algorithm for one sentence
 	 * v are in log scale, A, B and pi are in the usual scale.
 	 */
-	private double viterbi(Sentence s) {
-		return 0;
+	private int[] viterbi(Sentence s) {
+		double[] arrayV = new double[num_postags];
+		Matrix matrixV = new Matrix(arrayV, 1);
+		int[] tagSequence = new int[s.length()];
+		double currmax = 0;
+		for (int i = 0; i < s.length(); i++){
+			int o;
+			if (!word_tags.containsKey(s.getWordAt(i).getLemme())){
+				o = num_words;
+			}
+			else {
+				o = word_tags.get(s.getWordAt(i).getLemme());
+			}
+			//currmax = 0;
+			int maxlabel = 0;
+			//first word : pi(j) * bjo and get max
+			if (i == 0){
+				for (int j = 0; j < arrayV.length; j++){
+					arrayV[j] = pi.get(0, j)  * B.get(j, o);
+					if (arrayV[j] > currmax) {
+						currmax = arrayV[j];
+						maxlabel = j;
+					}
+				}
+
+			}
+			//other word: vi * aij * bjo, and get max
+			else{
+				for (int j = 0; j < arrayV.length; j++){
+					Matrix temp3 = A.getMatrix(0, num_postags-1, j, j).transpose();
+					Matrix temp = matrixV.arrayTimes(temp3);
+					double[] tempArray = temp.getArray()[0];
+					double maxForOneQ = 0; //this is the max for one state qj
+					for (int k = 0; k < tempArray.length; k++){
+						maxForOneQ = Math.max(maxForOneQ, tempArray[k]);
+					}
+
+
+					arrayV[j] = maxForOneQ  *B.get(j, o);
+					if (arrayV[j] > currmax){
+						currmax = arrayV[j];
+						maxlabel = j;
+					}
+				}
+
+			}
+
+			tagSequence[i] = maxlabel;
+			System.out.println("the tag is " + maxlabel + " its v is " + currmax);
+			currmax = 0;
+			matrixV = new Matrix(arrayV, 1);
+
+		}
+
+		return tagSequence;
 	}
 
+	private int[] viterbilog(Sentence s) {
+		double[] arrayV = new double[num_postags];
+		double[] narrayV = new double[num_postags];
+		int[] tagSequence = new int[s.length()];
+		double currmax = 0;
+		for (int i = 0; i < s.length(); i++){
+			int o;
+			if (!word_tags.containsKey(s.getWordAt(i).getLemme())){
+				o = num_words;
+			}
+			else {
+				o = word_tags.get(s.getWordAt(i).getLemme());
+			}
+			//currmax = 0;
+			int maxlabel = 0;
+			//first word : pi(j) * bjo and get max
+			if (i == 0){
+				for (int j = 0; j < arrayV.length; j++){
+					arrayV[j] = Math.log(pi.get(0, j) ) + Math.log( B.get(j, o));
+					if (arrayV[j] > currmax) {
+						currmax = arrayV[j];
+						maxlabel = j;
+					}
+				}
+
+			}
+			//other word: vi * aij * bjo, and get max
+			else{
+				narrayV = new double[num_postags];
+				for (int j = 0; j < arrayV.length; j++){
+					//get transition matrix column j
+					Matrix temp3 = A.getMatrix(0, num_postags-1, j, j).transpose();
+					double[] aij = temp3.getArray()[0];
+					//max each transition from previous position k
+					for (int k = 0; k < aij.length; k++){
+						double curr = arrayV[k] + Math.log(aij[k]);
+						narrayV[j] = Math.max(narrayV[j], curr);
+					}
+					//plus bjo
+					narrayV[j] += Math.log(B.get(j, o));
+					if (arrayV[j] > currmax){
+						currmax = arrayV[j];
+						maxlabel = j;
+					}
+				}
+
+			}
+
+			tagSequence[i] = maxlabel;
+			System.out.println("the tag is " + maxlabel + " its v is " + currmax);
+			currmax = 0;
+			arrayV = narrayV;
+
+		}
+
+		return tagSequence;
+	}
+
+
 	public static void main(String[] args) throws IOException {
+		/*
 		if (args.length < 3) {
 			System.out.println("Expecting at least 3 parameters");
 			System.exit(0);
 		}
+		*/
+		/*
 		String labeledFileName = args[0];
 		String unlabeledFileName = args[1];
 		String predictionFileName = args[2];
-		
+		*/
 		String trainingLogFileName = null;
 
-		
+		String labeledFileName = "./data/p1/train.txt";
+		String unlabeledFileName = "./data/p1/test.txt";
+		String predictionFileName = "./results/p1/result.txt";
+
+
+
 		if (args.length > 3) {
 			trainingLogFileName = args[3];
 		}
@@ -393,7 +560,10 @@ class HMM {
 		model.setMu(mu);
 		
 		model.prepareMatrices();
-		
+
+		model.forwardAlgorithm("./results/p1/log.txt");
+		model.viterbiAlgorithm("./results/p1/predictions.txt");
+
 		model.em();
 		model.predict();
 		model.outputPredictions(predictionFileName + "_" + String.format("%.1f", mu) + ".txt");

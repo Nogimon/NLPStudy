@@ -7,9 +7,14 @@ import java.util.ArrayList;
 
 public class Evaluator {
 	public static void main(String[] args) throws Exception {
-		String groundTruthFileName = args[0];
+		//String groundTruthFileName = args[0];
 		
-		String predictionFileName = args[1];
+		//String predictionFileName = args[1];
+
+		String groundTruthFileName = "./data/p1/test.txt";
+
+		String predictionFileName = "./results/p1/predictions.txt";
+
 
 		// read in labeled corpus
 		FileHandler fh = new FileHandler();
