@@ -11,9 +11,9 @@ public class Evaluator {
 		
 		//String predictionFileName = args[1];
 
-		String groundTruthFileName = "./data/p1/test.txt";
+		String groundTruthFileName = "./data/p2/test.txt";
 
-		String predictionFileName = "./results/p1/predictions.txt";
+		String predictionFileName = "./results/p2/predictions.txt";
 
 
 		// read in labeled corpus

@@ -56,8 +56,10 @@ class HMM {
 
 	// store the scaled alpha and beta
 	private Matrix alpha;
+	private double[][] alpha1;
 	
 	private Matrix beta;
+	private double[][] beta1;
 
 	// scales to prevent alpha and beta from underflowing
 	private Matrix scales;
@@ -209,12 +211,14 @@ class HMM {
 		//check result
 		System.out.println("total words are " + num_words);
 		System.out.println("total tags are " + num_postags);
+		/*
 		for (String s : tagCount.keySet()){
 			System.out.println(s + " " + tagCount.get(s));
 		}
 		for (String s : tagPairMap.keySet()){
 			System.out.println(s + " " + tagPairMap.get(s));
 		}
+		*/
 
 		//calculate mle
 		mle();
@@ -270,7 +274,110 @@ class HMM {
 	/**
 	 * Main EM algorithm. 
 	 */
-	public void em() {
+	public void em(){
+		for (int i = 1; i <= 3; i++){
+			calEM();
+			System.out.println("finished EM for the " + i + " round");
+		}
+	}
+
+
+	public void calEM() {
+		//A,B is already preset
+		double[][] Aarray = A.getArray();
+		double[][] Barray = B.getArray();
+		//for (int i = 0; i < Aarray.length; i++){
+		//	System.out.println(Arrays.toString(Aarray[i]));
+		//}
+
+		double[][] ahat = new double[num_postags][num_postags];// = sum(ksi) over t, not sum over j yet
+		double[][] bhat = new double[num_postags][num_words+1]; // = sum(gamma) for j and o.
+
+
+		for (Sentence s : unlabeled_corpus){
+			//get alpha and beta, size : s.length()
+			double probf = forward(s);
+			double probb = backward(s);
+
+
+			//double sumC = 0;
+			//for (int j = 0; j < alpha1[s.length()-1].length; j++){
+			//	sumC += alpha1[s.length()-1][j];
+			//}
+			double P = 1;
+
+			//xi(i, j) = alpha(i) * aij * bjo * beta(j) / P(O|lambda)
+			double[][] ksi = new double[num_postags][num_postags];
+			double[] gamma = new double[num_postags];
+
+
+			for (int i = 0; i < num_postags; i++){
+				for (int j = 0; j < num_postags; j++){
+					double sumxi = 0;
+					for (int t = 0; t < s.length()-1; t++){
+						//first get o
+						int o;
+						if (!word_tags.containsKey(s.getWordAt(t+1).getLemme())){
+							o = num_words;
+						}
+						else {
+							o = word_tags.get(s.getWordAt(t+1).getLemme());
+						}
+						//calculate (6.38)
+						double temp = alpha1[t][i] * Aarray[i][j] * Barray[j][o] * beta1[t+1][j];
+						sumxi /= P;
+						sumxi += temp;
+
+						double tempgamma = alpha1[t][j] * beta1[t][j];
+						tempgamma /= P;
+						bhat[j][o] += tempgamma;
+
+					}
+
+					//now sumxi is the numerator
+					ksi[i][j] = sumxi;
+					ahat[i][j] += ksi[i][j];
+
+
+
+
+				}
+			}
+
+
+
+		}
+
+
+		//now update A and B
+		for (int i = 0; i < num_postags; i++){
+			//first calulate denominator for a hat
+			double denom = 0;
+			for (int j = 0; j < num_postags; j++){
+				denom += ahat[i][j];
+			}
+			//then update a
+			for (int j = 0; j < num_postags; j++) {
+				Aarray[i][j] = ahat[i][j] / denom;
+			}
+		}
+
+		for (int j = 0; j < num_postags; j++){
+			//first calculate denom
+			double denom = 0;
+			for (int o = 0; o < num_words+1; o++){
+				denom += bhat[j][o];
+			}
+			//then update b
+			for (int o = 0; o < num_words+1; o++){
+				Barray[j][o] = bhat[j][0] / denom;
+			}
+		}
+
+
+		A = new Matrix(Aarray);
+		B = new Matrix(Barray);
+
 	}
 	
 	/**
@@ -331,7 +438,8 @@ class HMM {
 	 */
 	private double forward(Sentence s) {
 		double[] arrayAlpha = new double[num_postags];
-		Matrix alpha = new Matrix(arrayAlpha, 1);
+		Matrix alpha = new Matrix(arrayAlpha, 1);//1 row, arrayAlpha.length colums
+		alpha1 = new double[s.length()][num_postags];//for member variable alpha[t][j] -> a_t(j)
 		double P = 0;
 		for (int i = 0; i < s.length(); i++){
 			double sum = 0;
@@ -363,6 +471,11 @@ class HMM {
 			alpha = new Matrix(arrayAlpha, 1);
 			alpha = alpha.times(1/sum);
 
+			for (int j = 0; j < num_postags; j++){
+				alpha1[i][j] = alpha.get(0,j);
+			}
+			//System.out.println(Arrays.toString(alpha1[i]));
+
 			//logP = - sum(log c)
 			P -= Math.log(1/sum);
 		}
@@ -375,9 +488,59 @@ class HMM {
 	 * 
 	 * return: log P(O|\lambda)
 	 */
+
 	private double backward(Sentence s) {
-		return 0;
+		double[] arrayBeta = new double[num_postags];
+		Matrix beta = new Matrix(arrayBeta, 1);
+		beta1 = new double[s.length()][num_postags];
+		double P = 0;
+		for (int i = s.length()-1; i >= 0; i--){
+			double sum = 0;
+			int o;
+			if (!word_tags.containsKey(s.getWordAt(i).getLemme())){
+				o = num_words;
+			}
+			else {
+				o = word_tags.get(s.getWordAt(i).getLemme());
+			}
+			if (i == s.length()-1){//last word : ct-1 = 1/sum(alphat)
+				double sumC = 0;
+				for (int j = 0; j < alpha1[s.length()-1].length; j++){
+					sumC += alpha1[s.length()-1][j];
+				}
+				sumC = 1/sumC;
+				for (int j = 0; j < arrayBeta.length; j++){
+					arrayBeta[j] = sumC;//pi.get(0, j) * B.get(j, o);
+					sum += arrayBeta[j];
+				}
+			}
+			else{//other word: beta * a * b
+				for (int j = 0; j < arrayBeta.length; j++){
+					Matrix temp3 = A.getMatrix(0, num_postags-1, j, j);
+					Matrix temp = beta.times(temp3);
+					arrayBeta[j] = temp.get(0,0)  * B.get(j, o);
+					//System.out.print(arrayBeta[j] + " ");
+					sum += arrayBeta[j];
+				}
+			}
+
+			//System.out.println("sum is " + sum + " log 1/sum is " + Math.log(1/sum));
+			beta = new Matrix(arrayBeta, 1);
+			beta = beta.times(1/sum);
+
+			for (int j = 0; j < num_postags; j++){
+				beta1[i][j] = beta.get(0,j);
+			}
+
+			//logP = - sum(log c)
+			P -= Math.log(1/sum);
+		}
+
+
+
+		return P;
 	}
+
 
 
 
@@ -451,7 +614,7 @@ class HMM {
 			}
 
 			tagSequence[i] = maxlabel;
-			System.out.println("the tag is " + maxlabel + " its v is " + currmax);
+			//System.out.println("the tag is " + maxlabel + " its v is " + currmax);
 			currmax = 0;
 			matrixV = new Matrix(arrayV, 1);
 
@@ -533,9 +696,9 @@ class HMM {
 		*/
 		String trainingLogFileName = null;
 
-		String labeledFileName = "./data/p1/train.txt";
-		String unlabeledFileName = "./data/p1/test.txt";
-		String predictionFileName = "./results/p1/result.txt";
+		String labeledFileName = "./data/p2/train.txt";
+		String unlabeledFileName = "./data/p2/test.txt";
+		String predictionFileName = "./results/p2/result.txt";
 
 
 
@@ -561,8 +724,8 @@ class HMM {
 		
 		model.prepareMatrices();
 
-		model.forwardAlgorithm("./results/p1/log.txt");
-		model.viterbiAlgorithm("./results/p1/predictions.txt");
+		model.forwardAlgorithm("./results/p2/log.txt");
+		model.viterbiAlgorithm("./results/p2/predictions.txt");
 
 		model.em();
 		model.predict();
