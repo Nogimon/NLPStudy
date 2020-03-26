@@ -88,6 +88,7 @@ class FileHandler {
 		String trainFilename = args[0];
 
 		FileHandler fh = new FileHandler();
+		System.out.println("For TEST: Hello From File Handler");
 
 		ArrayList<Sentence> corpus = fh.readTaggedSentences(trainFilename);
 
