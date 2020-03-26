@@ -109,6 +109,8 @@ class HMM {
 	 * Set up the basic statistics of the corpora.
 	 */
 	public HMM(ArrayList<Sentence> _labeled_corpus, ArrayList<Sentence> _unlabeled_corpus) {
+		System.out.println("HMM");
+
 		this.labeled_corpus = _labeled_corpus;
 		this.unlabeled_corpus = _unlabeled_corpus;
 		pos_tags = new Hashtable<>();

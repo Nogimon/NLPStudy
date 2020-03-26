@@ -94,5 +94,6 @@ class FileHandler {
 		System.out.println(corpus.get(0).toString());
 		System.out.println(corpus.get(1).toString());
 		System.out.println(corpus.get(corpus.size() - 1).toString());
+		System.out.println("File handler");
 	}
 }
